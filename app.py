@@ -21,12 +21,11 @@ from agent import HERE, LOG_FILE, OWNER_FILE, REQUEST_FILE, BookingRequest, load
 
 st.set_page_config(page_title="Table booking", page_icon="🍽️", layout="centered")
 OUT_FILE = HERE / "agent_output.txt"
-MANAGER = os.getenv("MANAGER_USERNAME", "")
+MANAGER = (llm.settings().get("manager") or os.getenv("MANAGER_USERNAME", "")).lstrip("@")
 MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October",
           "November", "December"]
 
 st.title("🍽️ Table booking")
-st.caption(f"Manager in Telegram: **@{MANAGER}**" if MANAGER else "Set MANAGER_USERNAME in .env")
 
 # ---------- 1. Booking ----------
 req = load_request()
@@ -85,7 +84,7 @@ pid = agent_pid()
 with st.container(border=True):
     st.subheader("2. Agent")
     if pid:
-        st.success(f"Running · {llm.model_name()}")
+        st.success(f"Running · writing to @{MANAGER} · {llm.model_name()}")
         if st.button("Stop"):
             subprocess.run(["taskkill", "/PID", str(pid), "/F"], capture_output=True)
             PID_FILE.unlink(missing_ok=True)
@@ -93,6 +92,9 @@ with st.container(border=True):
             st.rerun()
     else:
         st.info("Stopped")
+        manager = st.text_input("Manager's Telegram", MANAGER, placeholder="@username").strip().lstrip("@")
+        if manager != MANAGER:
+            llm.save(manager=manager)
         choice = st.radio("Model", list(llm.PROVIDERS), format_func=llm.PROVIDERS.get, horizontal=True,
                           index=list(llm.PROVIDERS).index(llm.provider()))
         if choice == "ollama":
@@ -104,13 +106,14 @@ with st.container(border=True):
             if not os.getenv("GEMINI_API_KEY"):
                 st.warning("No GEMINI_API_KEY in .env")
         llm.save(llm=choice, **{f"{choice}_model": model})
-        if st.button("Start", type="primary", disabled=choice == "gemini" and not os.getenv("GEMINI_API_KEY")):
+        if st.button("Start", type="primary", disabled=not manager or (choice == "gemini" and not os.getenv("GEMINI_API_KEY"))):
             if LOG_FILE.exists():  # the previous conversation's file log goes to logs/
                 (HERE / "logs").mkdir(exist_ok=True)
                 LOG_FILE.rename(HERE / "logs" / f"decisions-{datetime.now():%Y%m%d-%H%M%S}.jsonl")
             OWNER_FILE.unlink(missing_ok=True)
             db.stop_unfinished()  # e.g. the agent crashed or was killed outside the app
-            env = {**os.environ, "OWNER_ANSWERS": "ui", "PYTHONIOENCODING": "utf-8", "PYTHONUNBUFFERED": "1"}
+            env = {**os.environ, "OWNER_ANSWERS": "ui", "PYTHONIOENCODING": "utf-8", "PYTHONUNBUFFERED": "1",
+                   "MANAGER_USERNAME": manager}
             proc = subprocess.Popen(
                 [sys.executable, str(HERE / "agent.py"), "telegram"], cwd=HERE, env=env,
                 stdin=subprocess.DEVNULL, stdout=OUT_FILE.open("w", encoding="utf-8"), stderr=subprocess.STDOUT)
