@@ -1,0 +1,9 @@
+{
+  "date": "2026-11-24",
+  "time": "17:00",
+  "party_size": 2,
+  "name": "Oliver Bennett",
+  "phone": "07700 900123",
+  "notes": "",
+  "if_unavailable": "ask_owner"
+}

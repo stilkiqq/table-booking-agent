@@ -1,0 +1,12 @@
+ollama
+telethon
+python-dotenv
+pydantic
+tzdata
+streamlit
+google-genai
+# voice messages (optional), also needs ffmpeg
+kokoro-onnx
+soundfile
+numpy
+faster-whisper
