@@ -91,6 +91,23 @@ agent's questions there. Without the app: `python agent.py telegram` (questions 
 
 Tests: `python tests/run_tests.py` (local model; about 10 minutes).
 
+## Choosing the model
+
+Hardware: one 16 GB GPU (RX 9070 XT). Measured: Windows ~2.6 GB, `qwen3:14b` with a 16k context ~11 GB,
+Chatterbox ~1.5 GB, so 15.5 of 16 GB in use with voice on. Anything bigger (gemma4 26B/31B, qwen3.5 27B,
+gpt-oss 20B at 13 GB) would spill to the CPU and slow every reply down.
+
+Candidates came from the [Ollama library](https://ollama.com/library) and 16 GB VRAM comparisons, then each was
+run on the same scripted scenarios (`tests/run_tests.py`):
+
+| Model | Result on our scenarios |
+|---|---|
+| `qwen3:14b` (chosen) | all 10 end correctly; traps not answered; style sometimes a bit stiff |
+| `qwen3.5:9b-q8_0` | higher IFEval on paper, but here it mixed up times, made up "a table for six" and a guest "Emma", ended one booking straight away (`tests/last_run_qwen3.5_9b_q8.txt`) |
+| `gpt-oss:20b` | fits only without voice; confused whose side it was on more often |
+| `gemini-3.5-flash` (API) | good, but the free tier allows 20 requests a day per model and was often busy (503) |
+| `qwen3:14b` with thinking on | 5–10× slower, no better tone |
+
 ## Known limits
 
 - A local 14B model sometimes sounds a bit like an assistant or repeats the time; the code checks catch the
