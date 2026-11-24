@@ -447,6 +447,20 @@ async def answers_it(off_topic: list[str], reply: str) -> bool:
 
 WORD_NUMBERS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6,
                 "seven": 7, "eight": 8, "nine": 9, "ten": 10}
+HOUR_WORDS = {**WORD_NUMBERS, "eleven": 11, "twelve": 12}
+_HOUR = r"(\d{1,2}|" + "|".join(HOUR_WORDS) + r")"
+
+
+def british_times(text: str) -> str:
+    """Rewrite spoken times as digits: "half five" -> "5:30", "quarter to seven" -> "6:45", "six o'clock" -> "6:00"."""
+    hour = lambda w: int(w) if w.isdigit() else HOUR_WORDS[w.lower()]
+    text = re.sub(rf"\bhalf (?:past )?{_HOUR}\b", lambda m: f"{hour(m.group(1))}:30", text, flags=re.I)
+    text = re.sub(rf"\bquarter past {_HOUR}\b", lambda m: f"{hour(m.group(1))}:15", text, flags=re.I)
+    text = re.sub(rf"\bquarter to {_HOUR}\b", lambda m: f"{hour(m.group(1)) - 1 or 12}:45", text, flags=re.I)
+    text = re.sub(rf"\b{_HOUR}\s*(o'?clock|pm|am)\b", lambda m: f"{hour(m.group(1))} {m.group(2)}", text, flags=re.I)
+    return text
+
+
 CLOCK = re.compile(r"(?<![£$\d])\b(\d{1,2})(?:[:.](\d{2}))?\s*(am\b|pm\b|a\.m\.|p\.m\.|o'?clock)?(?!\d)", re.I)
 PARTY = re.compile(r"\bfor\s+(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten)\b"
                    r"(?!\s*(?:[:.]\d|am\b|pm\b|a\.m|p\.m|o'?clock))", re.I)
@@ -455,9 +469,11 @@ NEGATIVE = re.compile(r"unfortunately|sorry|fully booked|no table|not available|
 
 
 def clock_times(text: str) -> set[str]:
-    """Times mentioned in a text as HH:MM. "5:00" / "5 o'clock" count as both 05:00 and 17:00."""
+    """Times mentioned in a text as HH:MM. "5:00" / "5 o'clock" count as both 05:00 and 17:00.
+    British spoken times count too: "half five" = 5:30, "quarter past six", "quarter to seven", "five o'clock"."""
     out = set()
-    for h, m, suffix in CLOCK.findall(text or ""):
+    text = british_times(text or "")
+    for h, m, suffix in CLOCK.findall(text):
         if not m and not suffix:
             continue  # a bare number ("for 2") is not a time
         h, m, suffix = int(h), int(m or 0), suffix.lower().replace(".", "")
