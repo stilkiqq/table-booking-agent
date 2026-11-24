@@ -231,13 +231,21 @@ def live() -> None:
                 def reply(text: str) -> None:
                     OWNER_FILE.write_text(json.dumps({**q, "answer": text}), encoding="utf-8")
 
-                b1, b2 = st.columns(2)
-                if b1.button("✅ Yes, book it", type="primary", width="stretch"):
-                    reply("Yes, that works for me. Please go ahead and book it.")
-                    st.rerun()
-                if b2.button("✖ No", width="stretch"):
-                    reply("No, that doesn't work for me. Please thank them and say goodbye.")
-                    st.rerun()
+                options = q.get("options") or []
+                if options:  # the manager offered several things: one button each (times, waiting list, none)
+                    for i, (col, option) in enumerate(zip(st.columns(len(options)), options)):
+                        if col.button(option, key=f"opt-{i}", type="primary" if i == 0 else "secondary",
+                                      width="stretch"):
+                            reply(option)
+                            st.rerun()
+                else:
+                    b1, b2 = st.columns(2)
+                    if b1.button("✅ Yes, book it", type="primary", width="stretch"):
+                        reply("Yes, that works for me. Please go ahead and book it.")
+                        st.rerun()
+                    if b2.button("✖ No", width="stretch"):
+                        reply("No, that doesn't work for me. Please thank them and say goodbye.")
+                        st.rerun()
                 with st.form("owner", clear_on_submit=True):
                     answer = st.text_input("Or answer in your own words")
                     if st.form_submit_button("Send") and answer:
