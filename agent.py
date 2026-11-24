@@ -698,8 +698,10 @@ async def run(send, receive, ask_owner, listen_after: bool = False) -> None:
         elif listen_after:
             # A booking can still go wrong later ("sorry, we've double-booked"): keep listening until the booking
             # time, and if the manager writes again, reopen the conversation and deal with it.
-            until = datetime.combine(conv.terms.day, datetime.strptime(conv.terms.time, "%H:%M").time())
-            seconds = (until - datetime.now()).total_seconds()
+            from zoneinfo import ZoneInfo
+            london = ZoneInfo("Europe/London")  # the booking time is the restaurant's, not this computer's
+            until = datetime.combine(conv.terms.day, datetime.strptime(conv.terms.time, "%H:%M").time(), london)
+            seconds = (until - datetime.now(london)).total_seconds()
             if seconds <= 0:
                 break
             print(f"  (done; listening for news from the manager until {until:%H:%M})", flush=True)
